@@ -21,13 +21,14 @@ import java.util.*;
 public class CourseController {
 
     private final SimpleDateFormat SDF;
-    private final HashMap<Date, Course> courses;
+    //private final HashMap<Date, Course> courses;
+    private LinkedList<Course> courses;
 
 
     @Autowired
     public CourseController() throws IOException, ParserException, ParseException {
         SDF = new SimpleDateFormat("yyyyMMdd");
-        courses = new HashMap<>();
+        courses = new LinkedList<>();
 
         this.load();
     }
@@ -38,25 +39,30 @@ public class CourseController {
 
         net.fortuna.ical4j.model.Calendar calendar = builder.build(getFileFromResourceAsStream("Plan30292.ics"));
 
-        Iterator iterator = calendar.getComponents().iterator();
-
-        while(iterator.hasNext()){
-            Component component = (Component) iterator.next();
+        for (Object o : calendar.getComponents()) {
+            Component component = (Component) o;
 
             Course course = convertComponentToCourse(component);
             Date startDate = SDF.parse(course.getStart());
             Debug.log(startDate);
-            courses.put(startDate, course);
+            //courses.put(startDate, course);
+            courses.add(course);
         }
     }
 
     @GetMapping("/date")
-    public LinkedList<Course> getCourses(@RequestParam(value = "date", defaultValue = "20010831") String stringDate){
-        Date date;
+    public LinkedList<Course> getCourses(@RequestParam(value = "date", defaultValue = "20010731;20010831") String stringDate){
+        Date start;
+        Date end;
+
         try {
-            date = SDF.parse(stringDate);
-            Debug.log(date);
-            return getCoursers(date);
+            String[] parts = stringDate.split(";");
+            start = SDF.parse(parts[0]);
+            end = SDF.parse(parts[1]);
+
+            LinkedList<Course> allCourses;
+            allCourses = getCoursesBetween(start, end);
+            return allCourses;
 
         } catch (ParseException e) {
             return null;
@@ -92,7 +98,20 @@ public class CourseController {
         return new Course(start, end, room, name, exercise);
     }
 
-    private LinkedList<Course> getCoursers(Date date){
+    private LinkedList<Course> getCoursesBetween(Date start, Date end) throws ParseException {
+        LinkedList<Course> tempCourses = new LinkedList<>();
+
+        for(Course course : courses){
+            Date tempStart = SDF.parse(course.getStart());
+            if(tempStart.before(end) && tempStart.after(start)){
+                tempCourses.add(course);
+            }
+        }
+
+        return tempCourses;
+    }
+
+    /*private LinkedList<Course> getCoursers(Date date){
         LinkedList<Course> tempCourses = new LinkedList<>();
 
         for(Date tempDate : courses.keySet()){
@@ -104,6 +123,6 @@ public class CourseController {
         }
 
         return tempCourses;
-    }
+    }*/
 
 }
